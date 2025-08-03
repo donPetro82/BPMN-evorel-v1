@@ -7,18 +7,25 @@ import CssBaseline from "@mui/material/CssBaseline";
 
 const theme = createTheme();
 
-function App() {
+export default function App() {
   const [page, setPage] = useState("main");
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      {page === "main" && <MainPage onCatalogs={() => setPage("catalogs")} />}
-      {page === "catalogs" && (
-        <CatalogsPage onBusinessRoles={() => setPage("roles")} />
+      {page === "main" && (
+        <MainPage onCatalogs={() => setPage("catalogs")} />
       )}
-      {page === "roles" && <BusinessRolesTree />}
+      {page === "catalogs" && (
+        <CatalogsPage
+          onBack={() => setPage("main")}
+          onBusinessRoles={() => setPage("roles")}
+        />
+      )}
+      {page === "roles" && (
+        <BusinessRolesTree
+          onBack={() => setPage("catalogs")}
+        />
+      )}
     </ThemeProvider>
   );
 }
-
-export default App;

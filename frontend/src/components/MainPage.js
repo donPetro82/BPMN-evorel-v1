@@ -1,19 +1,45 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
+import React from "react";
+import { Button, Box, Typography, Container } from "@mui/material";
+import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
+import MenuBookIcon from "@mui/icons-material/MenuBook";
 
-function MainPage() {
-  const { t } = useTranslation();
-
+export default function MainPage() {
   return (
-    <div style={{ padding: '40px' }}>
-      <h1>{t('title')}</h1>
-      <div>
-        <button style={{ margin: '15px', fontSize: '20px' }}>{t('processes')}</button>
-        <button style={{ margin: '15px', fontSize: '20px' }}>{t('directories')}</button>
-      </div>
-      {/* Здесь будут компоненты дерева процессов и справочников */}
-    </div>
+    <Container maxWidth="sm" style={{ marginTop: "80px" }}>
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 4,
+          alignItems: "center",
+          padding: 4,
+          boxShadow: 3,
+          borderRadius: 3,
+          background: "#fafbfc",
+        }}
+      >
+        <Typography variant="h4" color="primary" gutterBottom>
+          Добро пожаловать!
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          size="large"
+          startIcon={<BusinessCenterIcon />}
+          sx={{ minWidth: 220, fontSize: 18 }}
+        >
+          Бизнес-процессы
+        </Button>
+        <Button
+          variant="outlined"
+          color="secondary"
+          size="large"
+          startIcon={<MenuBookIcon />}
+          sx={{ minWidth: 220, fontSize: 18 }}
+        >
+          Справочники
+        </Button>
+      </Box>
+    </Container>
   );
 }
-
-export default MainPage;

@@ -1,9 +1,9 @@
 import React from "react";
 import { Button, Box, Typography, Container } from "@mui/material";
-import BusinessCenterIcon from "@mui/icons-material/BusinessCenter";
-import MenuBookIcon from "@mui/icons-material/MenuBook";
+import GroupIcon from "@mui/icons-material/Group";
+import AppsIcon from "@mui/icons-material/Apps";
 
-export default function MainPage({ onCatalogs }) {
+export default function CatalogsPage({ onBusinessRoles }) {
   return (
     <Container maxWidth="sm" style={{ marginTop: "80px" }}>
       <Box
@@ -18,27 +18,27 @@ export default function MainPage({ onCatalogs }) {
           background: "#fafbfc",
         }}
       >
-        <Typography variant="h4" color="primary" gutterBottom>
-          Добро пожаловать!
+        <Typography variant="h4" color="secondary" gutterBottom>
+          Справочники
         </Typography>
         <Button
           variant="contained"
           color="primary"
           size="large"
-          startIcon={<BusinessCenterIcon />}
+          startIcon={<GroupIcon />}
           sx={{ minWidth: 220, fontSize: 18 }}
+          onClick={onBusinessRoles}
         >
-          Бизнес-процессы
+          Бизнес-роли
         </Button>
         <Button
           variant="outlined"
           color="secondary"
           size="large"
-          startIcon={<MenuBookIcon />}
+          startIcon={<AppsIcon />}
           sx={{ minWidth: 220, fontSize: 18 }}
-          onClick={onCatalogs}
         >
-          Справочники
+          Системы
         </Button>
       </Box>
     </Container>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -21,8 +21,22 @@ import TreeView from "@mui/lab/TreeView";
 import TreeItem from "@mui/lab/TreeItem";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import axios from "axios";
+
+// Собирает дерево из списка бизнес-ролей с parentId
+function buildTree(flatRoles) {
+  const map = {};
+  flatRoles.forEach(role => { map[role.id] = { ...role, children: [] }; });
+  const roots = [];
+  flatRoles.forEach(role => {
+    if (role.parentId === null) roots.push(map[role.id]);
+    else if (map[role.parentId]) map[role.parentId].children.push(map[role.id]);
+  });
+  return roots;
+}
 
 export default function BusinessRolesTree({ onBack }) {
+  const [flatRoles, setFlatRoles] = useState([]);
   const [tree, setTree] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogAction, setDialogAction] = useState("");
@@ -30,91 +44,67 @@ export default function BusinessRolesTree({ onBack }) {
   const [inputValue, setInputValue] = useState("");
   const [isGroup, setIsGroup] = useState(true);
 
-  // Найти узел и его родителя по id
-  function findNodeAndParent(nodes, id, parent = null) {
-    for (const node of nodes) {
-      if (node.id === id) return { node, parent, siblings: nodes };
-      if (node.group && node.children) {
-        const res = findNodeAndParent(node.children, id, node);
-        if (res) return res;
-      }
-    }
-    return null;
+  // Загрузка бизнес-ролей из backend при старте и после изменений
+  async function reloadRoles() {
+    const res = await axios.get("/api/business-roles");
+    setFlatRoles(res.data);
+    setTree(buildTree(res.data));
   }
 
-  // Открыть диалог добавления
-  function handleAdd(id) {
+  useEffect(() => {
+    reloadRoles();
+  }, []);
+
+  // CRUD операции через API
+  async function handleAdd(parentId) {
     setDialogOpen(true);
     setDialogAction("add");
-    setSelectedId(id);
+    setSelectedId(parentId);
     setInputValue("");
     setIsGroup(true);
   }
 
-  // Открыть диалог редактирования
-  function handleEdit(id) {
+  async function handleEdit(id) {
     setDialogOpen(true);
     setDialogAction("edit");
     setSelectedId(id);
-    const { node } = findNodeAndParent(tree, id);
-    setInputValue(node.name);
-    setIsGroup(node.group);
+    const role = flatRoles.find(r => r.id === id);
+    setInputValue(role ? role.name : "");
+    setIsGroup(role ? role.group : true);
   }
 
-  // Открыть диалог удаления
-  function handleDelete(id) {
+  async function handleDelete(id) {
     setDialogOpen(true);
     setDialogAction("delete");
     setSelectedId(id);
   }
 
-  // Подтвердить изменение
-  function handleDialogConfirm() {
-    const newId = Date.now().toString();
+  async function handleDialogConfirm() {
     if (dialogAction === "add") {
-      // Если добавляем корневой элемент — всегда группа!
-      if (selectedId == null) {
-        setTree([...tree, {
-          id: newId,
-          name: inputValue,
-          group: true,
-          children: []
-        }]);
-      } else {
-        const { node } = findNodeAndParent(tree, selectedId);
-        if (!node.group) return;
-        if (!node.children) node.children = [];
-        node.children.push({
-          id: newId,
-          name: inputValue,
-          group: isGroup,
-          ...(isGroup ? { children: [] } : {})
-        });
-        setTree([...tree]);
-      }
+      await axios.post("/api/business-roles", {
+        name: inputValue,
+        group: isGroup,
+        parentId: selectedId,
+      });
     }
     if (dialogAction === "edit") {
-      const { node } = findNodeAndParent(tree, selectedId);
-      node.name = inputValue;
-      node.group = isGroup;
-      if (isGroup && !node.children) node.children = [];
-      if (!isGroup) node.children = undefined;
-      setTree([...tree]);
+      const role = flatRoles.find(r => r.id === selectedId);
+      await axios.put(`/api/business-roles/${selectedId}`, {
+        name: inputValue,
+        group: isGroup,
+        parentId: role ? role.parentId : null,
+      });
     }
     if (dialogAction === "delete") {
-      if (selectedId == null) return;
-      const { siblings } = findNodeAndParent(tree, selectedId);
-      const idx = siblings.findIndex(n => n.id === selectedId);
-      if (idx !== -1) siblings.splice(idx, 1);
-      setTree([...tree]);
+      await axios.delete(`/api/business-roles/${selectedId}`);
     }
+    await reloadRoles();
     setDialogOpen(false);
     setSelectedId(null);
     setInputValue("");
     setIsGroup(true);
   }
 
-  // Отмена диалога
   function handleDialogCancel() {
     setDialogOpen(false);
     setSelectedId(null);
@@ -122,12 +112,12 @@ export default function BusinessRolesTree({ onBack }) {
     setIsGroup(true);
   }
 
-  // Рекурсивная визуализация дерева
+  // Визуализация дерева (старый UI сохранён полностью)
   function renderTree(nodes) {
     return nodes.map(node => (
       <TreeItem
         key={node.id}
-        nodeId={node.id}
+        nodeId={String(node.id)}
         label={
           <Box sx={{ display: "flex", alignItems: "center" }}>
             <Typography

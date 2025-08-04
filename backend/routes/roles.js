@@ -8,7 +8,8 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const role = await Role.create(req.body);
+  const { name, parentId, isGroup } = req.body;
+  const role = await Role.create({ name, parentId, isGroup });
   res.json(role);
 });
 

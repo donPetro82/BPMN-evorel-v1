@@ -17,20 +17,27 @@ import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import TreeView from "@mui/lab/TreeView";
-import TreeItem from "@mui/lab/TreeItem";
+import { SimpleTreeView, TreeItem } from "@mui/x-tree-view";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import axios from "axios";
 
-// Собирает дерево из списка бизнес-ролей с parentId
+// Собирает дерево из списка бизнес-ролей с parentId, защищает от циклов
 function buildTree(flatRoles) {
   const map = {};
   flatRoles.forEach(role => { map[role.id] = { ...role, children: [] }; });
   const roots = [];
   flatRoles.forEach(role => {
+    // Защита: игнорируем цикличные parentId
+    if (role.parentId === role.id) {
+      console.warn(`Роль с id=${role.id} имеет parentId равный своему id! Пропущено.`);
+      return;
+    }
     if (role.parentId === null) roots.push(map[role.id]);
-    else if (map[role.parentId]) map[role.parentId].children.push(map[role.id]);
+    else if (map[role.parentId] && map[role.parentId] !== map[role.id]) {
+      // Защита от циклов
+      map[role.parentId].children.push(map[role.id]);
+    }
   });
   return roots;
 }
@@ -44,9 +51,10 @@ export default function BusinessRolesTree({ onBack }) {
   const [inputValue, setInputValue] = useState("");
   const [isGroup, setIsGroup] = useState(true);
 
-  // Загрузка бизнес-ролей из backend при старте и после изменений
   async function reloadRoles() {
     const res = await axios.get("/api/business-roles");
+    // Диагностика: логируем роли
+    console.log("Бизнес-роли с сервера:", res.data);
     setFlatRoles(res.data);
     setTree(buildTree(res.data));
   }
@@ -55,7 +63,6 @@ export default function BusinessRolesTree({ onBack }) {
     reloadRoles();
   }, []);
 
-  // CRUD операции через API
   async function handleAdd(parentId) {
     setDialogOpen(true);
     setDialogAction("add");
@@ -112,46 +119,49 @@ export default function BusinessRolesTree({ onBack }) {
     setIsGroup(true);
   }
 
-  // Визуализация дерева (старый UI сохранён полностью)
-  function renderTree(nodes) {
-    return nodes.map(node => (
-      <TreeItem
-        key={node.id}
-        nodeId={String(node.id)}
-        label={
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <Typography
-              variant="body1"
-              sx={{
-                fontWeight: node.group ? "bold" : "normal",
-                mr: 1,
-                color: node.group ? "inherit" : "text.secondary",
-              }}
-            >
-              {node.name}
-            </Typography>
-            {node.group && (
-              <IconButton size="small" onClick={e => { e.stopPropagation(); handleAdd(node.id); }}>
-                <AddIcon fontSize="small" />
+  // Визуализация дерева
+  function renderTree(nodes, parentPath = "") {
+    return nodes.map(node => {
+      // nodeId должен быть уникальным (используем путь)
+      const currentPath = parentPath ? `${parentPath}-${node.id}` : `${node.id}`;
+      return (
+        <TreeItem
+          key={currentPath}
+          nodeId={currentPath}
+          label={
+            <Box sx={{ display: "flex", alignItems: "center" }}>
+              <Typography
+                variant="body1"
+                sx={{
+                  fontWeight: node.group ? "bold" : "normal",
+                  mr: 1,
+                  color: node.group ? "inherit" : "text.secondary",
+                }}
+              >
+                {node.name}
+              </Typography>
+              {node.group && (
+                <IconButton size="small" onClick={e => { e.stopPropagation(); handleAdd(node.id); }}>
+                  <AddIcon fontSize="small" />
+                </IconButton>
+              )}
+              <IconButton size="small" onClick={e => { e.stopPropagation(); handleEdit(node.id); }}>
+                <EditIcon fontSize="small" />
               </IconButton>
-            )}
-            <IconButton size="small" onClick={e => { e.stopPropagation(); handleEdit(node.id); }}>
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton size="small" onClick={e => { e.stopPropagation(); handleDelete(node.id); }}>
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        }
-      >
-        {node.group && node.children && node.children.length > 0 && renderTree(node.children)}
-      </TreeItem>
-    ));
+              <IconButton size="small" onClick={e => { e.stopPropagation(); handleDelete(node.id); }}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          }
+        >
+          {node.group && node.children && node.children.length > 0 && renderTree(node.children, currentPath)}
+        </TreeItem>
+      );
+    });
   }
 
   return (
     <Container maxWidth="md" sx={{ mt: 5 }}>
-      {/* Кнопка "назад" слева от заголовка */}
       <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
         <IconButton
           onClick={onBack}
@@ -182,13 +192,13 @@ export default function BusinessRolesTree({ onBack }) {
             </Button>
           </Box>
         ) : (
-          <TreeView
+          <SimpleTreeView
             defaultCollapseIcon={<ExpandMoreIcon />}
             defaultExpandIcon={<ChevronRightIcon />}
             sx={{ flexGrow: 1, overflowY: "auto", minHeight: 240 }}
           >
             {renderTree(tree)}
-          </TreeView>
+          </SimpleTreeView>
         )}
       </Box>
       <Dialog open={dialogOpen} onClose={handleDialogCancel}>

@@ -22,23 +22,44 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import axios from "axios";
 
-// Собирает дерево из списка бизнес-ролей с parentId, защищает от циклов
-function buildTree(flatRoles) {
+console.log("Компонент BusinessRolesTree Монтируется!");
+
+// Безопасное построение дерева из списка бизнес-ролей
+function buildSafeTree(flatRoles) {
   const map = {};
-  flatRoles.forEach(role => { map[role.id] = { ...role, children: [] }; });
-  const roots = [];
   flatRoles.forEach(role => {
-    // Защита: игнорируем цикличные parentId
-    if (role.parentId === role.id) {
-      console.warn(`Роль с id=${role.id} имеет parentId равный своему id! Пропущено.`);
+    map[role.id] = { ...role, children: [] };
+  });
+
+  const roots = [];
+  const visited = new Set();
+
+  flatRoles.forEach(role => {
+    if (
+      role.parentId === null ||
+      role.parentId === role.id ||
+      !map[role.parentId]
+    ) {
+      roots.push(map[role.id]);
       return;
     }
-    if (role.parentId === null) roots.push(map[role.id]);
-    else if (map[role.parentId] && map[role.parentId] !== map[role.id]) {
-      // Защита от циклов
+    if (visited.has(role.id)) return;
+
+    let parent = map[role.parentId];
+    let isCycle = false;
+    while (parent) {
+      if (parent.id === role.id) {
+        isCycle = true;
+        break;
+      }
+      parent = parent.parentId ? map[parent.parentId] : null;
+    }
+    if (!isCycle) {
       map[role.parentId].children.push(map[role.id]);
+      visited.add(role.id);
     }
   });
+
   return roots;
 }
 
@@ -53,10 +74,8 @@ export default function BusinessRolesTree({ onBack }) {
 
   async function reloadRoles() {
     const res = await axios.get("/api/business-roles");
-    // Диагностика: логируем роли
-    console.log("Бизнес-роли с сервера:", res.data);
     setFlatRoles(res.data);
-    setTree(buildTree(res.data));
+    setTree(buildSafeTree(res.data));
   }
 
   useEffect(() => {
@@ -122,12 +141,11 @@ export default function BusinessRolesTree({ onBack }) {
   // Визуализация дерева
   function renderTree(nodes, parentPath = "") {
     return nodes.map(node => {
-      // nodeId должен быть уникальным (используем путь)
       const currentPath = parentPath ? `${parentPath}-${node.id}` : `${node.id}`;
       return (
         <TreeItem
           key={currentPath}
-          nodeId={currentPath}
+          itemId={currentPath} // ВАЖНО! Было nodeId={...}
           label={
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <Typography

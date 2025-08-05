@@ -4,7 +4,7 @@ import GroupIcon from "@mui/icons-material/Group";
 import AppsIcon from "@mui/icons-material/Apps";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-export default function CatalogsPage({ onBack, onBusinessRoles }) {
+export default function CatalogsPage({ onBack, onBusinessRoles, onSystems }) {
   return (
     <Container maxWidth="sm" style={{ marginTop: "80px" }}>
       <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
@@ -52,6 +52,7 @@ export default function CatalogsPage({ onBack, onBusinessRoles }) {
           size="large"
           startIcon={<AppsIcon />}
           sx={{ minWidth: 220, fontSize: 18 }}
+          onClick={onSystems}
         >
           Системы
         </Button>
